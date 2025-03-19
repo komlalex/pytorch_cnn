@@ -35,12 +35,31 @@ datasets = CIFAR10(root="/data",
 test_ds = CIFAR10(root="/data", 
                         download=True, 
                         transform=ToTensor(), 
-                        train=False) 
-TRAIN_LENGTH = 40_000
-VAL_LENGTH = len(datasets) - TRAIN_LENGTH
-"""Explore data"""
+                        train=False)  
+class_names = datasets.classes 
+
+class_to_idx = datasets.class_to_idx
+
+
 """Split datasets into training and validation sets """
-train_ds, val_ds = random_split(datasets, [TRAIN_LENGTH, VAL_LENGTH])   
+torch.manual_seed(42) 
+torch.cuda.manual_seed(42)
+VAL_SIZE = 5000
+TRAIN_SIZE = len(datasets) - VAL_SIZE
+train_ds, val_ds = random_split(datasets, [TRAIN_SIZE, VAL_SIZE])   
+
+
+"""View sample images""" 
+def show_example(img, label):  
+    plt.figure(figsize=(12, 6))
+    plt.imshow(img.permute(1, 2, 0))
+    plt.title(f"Label: {class_names[label]}") 
+    plt.axis(False) 
+
+
+show_example(*datasets[0])
+show_example(*datasets[1099])
+show_example(*datasets[3000])
 
 """Create device data loader"""
 class DeviceDataLoader():
@@ -58,10 +77,27 @@ class DeviceDataLoader():
 
 """ Create dataloaders """
 BATCH_SIZE = 128
-train_dl = DeviceDataLoader(DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle= True, pin_memory=True), device)
-val_dl = DeviceDataLoader(DataLoader(val_ds, batch_size=BATCH_SIZE*2, pin_memory=True), device)
-test_dl = DeviceDataLoader(DataLoader(test_ds, BATCH_SIZE*2, pin_memory=True), device)
+train_dl = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle= True, pin_memory=True)
+val_dl = DataLoader(val_ds, batch_size=BATCH_SIZE*2, pin_memory=True) 
+test_dl = DataLoader(test_ds, batch_size=BATCH_SIZE*2, pin_memory=True)
 
+def show_batch(images): 
+    plt.figure(figsize=(12, 6))
+    plt.imshow(make_grid(images, nrow=16).permute(1, 2, 0))
+    plt.axis(False)
+    plt.title("Sample Batch")
+   
+
+for images, labels in train_dl:
+    show_batch(images) 
+    break 
+
+plt.show()
+
+"""Transfer Data loaders to device"""
+train_dl = DeviceDataLoader(train_dl, device) 
+val_dl = DeviceDataLoader(val_dl, device) 
+test_dl = DeviceDataLoader(test_dl, device)
 
 """Define accuracy function""" 
 def accuracy(outputs, y_true): 
@@ -72,9 +108,18 @@ def accuracy(outputs, y_true):
 class CFar10Model(nn.Module):
     def __init__(self):
         super().__init__() 
+        self.linear1 = nn.Linear(in_features=3072, out_features=64)
+        self.linear2 = nn.Linear(64, 32)
+        self.linear3 = nn.Linear(32, 10)
 
     def forward(self, xb): 
-        pass 
+        xb = xb.reshape(-1, 3072) 
+        out = self.linear1(xb) 
+        out = F.relu(out)
+        out = self.linear2(out) 
+        out = F.relu(out) 
+        out = self.linear3(out)
+        return out 
 
     def training_step(self, batch):
         images, labels = batch
@@ -90,14 +135,15 @@ class CFar10Model(nn.Module):
         return {"val_loss": loss, "val_acc": acc}
 
     def validation_epoch_end(self, results):
-        epoch_losses = [x["val_loss"] for x in results]
-        loss = torch.stack(epoch_losses).mean() 
-        epoch_accs = [x["val_acc"] for x in results]  
-        acc = torch.stack(epoch_accs).mean() 
-        return {"val_loss": loss, "val_acc": acc} 
+        batch_losses = [x["val_loss"] for x in results]
+        epoch_loss = torch.stack(batch_losses).mean().item()
+        batch_accs = [x["val_acc"] for x in results]  
+        epoch_acc = torch.stack(batch_accs).mean().item()
+        return {"val_loss": epoch_loss, "val_acc": epoch_acc} 
     
     def epoch_end(self, epoch, result): 
-        print(f"\33[32m Epoch: {epoch+1} | Loss: {result["val_loss"]} | Acc: {result["val_acc"]}")  
+        print(f"\33[33m Epoch: {epoch+1} | Loss: {result["val_loss"]:.4f} | Acc: {result["val_acc"]:.4f}")  
+
 
 
 def evaluate(model, val_dl): 
@@ -105,7 +151,7 @@ def evaluate(model, val_dl):
     return model.validation_epoch_end(outputs) 
     
 
-def fit(epochs: int, lr: float, model: CFar10Model, train_dl: DataLoader, val_dl: DataLoader, opt_func=torch.optim.SGD): 
+def fit(epochs: int, lr: float, model: CFar10Model, train_dl: DataLoader, val_dl: DataLoader, opt_func=torch.optim.Adam): 
     optimizer = opt_func(model.parameters(), lr) 
     history = []
     for epoch in range(epochs): 
@@ -113,7 +159,7 @@ def fit(epochs: int, lr: float, model: CFar10Model, train_dl: DataLoader, val_dl
         for batch in train_dl: 
             loss = model.training_step(batch)
             loss.backward() 
-            optimizer.step() 
+            optimizer.step()  
             optimizer.zero_grad() 
 
         # Evaluation Phase 
@@ -126,6 +172,9 @@ def fit(epochs: int, lr: float, model: CFar10Model, train_dl: DataLoader, val_dl
 model = CFar10Model()
 to_device(model, device)
 
-# history = fit(5, 0.05, model)
+#fit(5, 0.5, model, train_dl, val_dl)
+
+#results = evaluate(model=model, val_dl=val_dl) 
+#print(results)
 
 
