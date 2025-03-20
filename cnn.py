@@ -12,6 +12,8 @@ from torchvision.utils import make_grid
 import matplotlib.pyplot as plt 
 import numpy as np 
 
+from pathlib import Path
+
 
 """Download data"""
 
@@ -219,6 +221,7 @@ transfer batches of data to the GPU (if available), and use to_device to move ou
 """
 train_dl = DeviceDataLoader(train_dl, device) 
 val_dl = DeviceDataLoader(val_dl, device) 
+test_dl = DeviceDataLoader(test_dl, device)
 to_device(model, device)
 
 """Training the Model
@@ -351,8 +354,29 @@ plt.figure()
 plt.imshow(img.permute(1, 2, 0))
 plt.title(f"Label: {class_names[label]} | Predicted: {predict_image(img, model)}")
 
-plt.show()
+#plt.show()
 
 """Identifying where our model performs poorly can help us improve the model, 
 by collecting more data, increasing/decreasing the complexity of the model, and changing the 
-hyperparameters."""
+hyperparameters. 
+
+As final step, let's also look at the overall performance on the test dataset. We expect 
+these values to be similar to those for the validation set. If not, we might need a better 
+validation set that has similar data distribution as the test set (which often comes from real world data)"""
+results = evaluate(model, test_dl) 
+print("Testing set: ", results)  
+
+"""Saving and loading our model"""
+# Save Model
+MODELS_PATH = Path("models/") 
+MODELS_PATH.mkdir(parents=True, exist_ok=True)
+MODEL_NAME = "cfar10-cnn-model.pth" 
+MODEL_SAVE_PATH = MODELS_PATH / MODEL_NAME 
+torch.save(model.state_dict(), MODEL_SAVE_PATH) 
+
+# Reload Model 
+model2 = Cifar10CnnModel() 
+to_device(model2, device) 
+model2.load_state_dict(torch.load(MODEL_SAVE_PATH, weights_only=True)) 
+results = evaluate(model2, test_dl) 
+print(results)
