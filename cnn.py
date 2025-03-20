@@ -92,34 +92,57 @@ for images, labels in train_dl:
     show_batch(images) 
     break 
 
-plt.show()
 
 """Transfer Data loaders to device"""
-train_dl = DeviceDataLoader(train_dl, device) 
-val_dl = DeviceDataLoader(val_dl, device) 
-test_dl = DeviceDataLoader(test_dl, device)
+#train_dl = DeviceDataLoader(train_dl, device) 
+#val_dl = DeviceDataLoader(val_dl, device) 
+#test_dl = DeviceDataLoader(test_dl, device)
 
 """Define accuracy function""" 
 def accuracy(outputs, y_true): 
     "Computes the accuracy of the model"
     y_preds = torch.argmax(outputs, dim=1) 
     return torch.tensor(torch.sum(y_preds == y_true).item() / len(y_true))
+"""Defining the Model (Convolutional Neural Networks) 
+In previous examples, we defined a deep neural network with fully-connected layers using 
+nn.Linear. Here, we will use a convolutional neural network, using the nn.Con2d class from PyTorch.
+
+The 2D convolution is a fairly simple operation at heart: you start with a kernel which is simply a small matrix of weights. 
+The kernel "slides" over the 2D input data, performing an element-wise multiplication 
+with the part of the input it is curently on, then summing up the results into a single output pixel"""
+
+"""Before we define the entire model, let's look at how a single convolutiona layer followed by a max-pooling 
+layer operates on the data"""
+conv = nn.Conv2d(3, 8, kernel_size=3, stride=1, padding=1) 
+pool = nn.MaxPool2d(2, 2)
+for images, labels in train_dl:
+    #print(images.shape)
+    out = conv(images)
+    #print(out.shape) 
+    out = pool(out) 
+    #print(out.shape)
+    break
+
+simple_model  = nn.Sequential(
+    nn.Conv2d(3, 8, kernel_size=3, stride=1, padding=1), 
+    nn.MaxPool2d(2, 2)
+)
+
+for images, labels in train_dl:
+    print(images.shape)
+    out = simple_model(images)
+    print(out.shape)
+    break
+
+
 
 class CFar10Model(nn.Module):
     def __init__(self):
         super().__init__() 
-        self.linear1 = nn.Linear(in_features=3072, out_features=64)
-        self.linear2 = nn.Linear(64, 32)
-        self.linear3 = nn.Linear(32, 10)
+        
 
     def forward(self, xb): 
-        xb = xb.reshape(-1, 3072) 
-        out = self.linear1(xb) 
-        out = F.relu(out)
-        out = self.linear2(out) 
-        out = F.relu(out) 
-        out = self.linear3(out)
-        return out 
+        pass
 
     def training_step(self, batch):
         images, labels = batch
