@@ -303,4 +303,56 @@ def plot_losses(history):
     plt.title("Loss vs No. of epochs")  
     plt.show() 
 
-plot_losses(history)
+#plot_losses(history) 
+"""Initially, both the training and validation losses seem to go decrease over time. However, 
+if you train the model for long enough, you will notice that the training loss continues to decrease, while the validation loss stops decreasing, and even starts to
+increase after a certain point.
+
+
+This phenomenon is called overfitting, and the non. 1 reason why many machine 
+learning models give rather terrible results on real-world data. It happens 
+because the model, in an attempt to minimize the loss, starts to learn patterns that are 
+unique to the training data, sometimes even memorizing specific training examples. 
+Because of this, the model does not generalize well to previously unseen data
+
+The following are some common strategies for avoiding overfitting: 
+* Gathering and generative more training data, or adding noise to it. 
+* Using regularization techniques like batch normalization & dropout
+* Early stopping of model's training, when validation loss starts to increase
+"""
+
+"""Testing with Individual Images 
+Let's define a helper function predict_image, which returns the predicted label 
+for a single image""" 
+
+def predict_image(img: torch.Tensor, model: nn.Module): 
+    # Convert to a batch of 1 
+    xb = to_device(img.unsqueeze(0), device) 
+    # Get predictions from the model 
+    yb = model(xb) 
+    # Pick index with the highest probability 
+    preds = torch.argmax(yb, dim=1) 
+
+    # Retrieve the class label 
+    return class_names[preds[0].item()]  
+
+img, label = test_ds[0] 
+plt.figure() 
+plt.imshow(img.permute(1, 2, 0))
+plt.title(f"Label: {class_names[label]} | Predicted: {predict_image(img, model)}") 
+
+img, label = test_ds[1002] 
+plt.figure() 
+plt.imshow(img.permute(1, 2, 0))
+plt.title(f"Label: {class_names[label]} | Predicted: {predict_image(img, model)}") 
+
+img, label = test_ds[6153] 
+plt.figure() 
+plt.imshow(img.permute(1, 2, 0))
+plt.title(f"Label: {class_names[label]} | Predicted: {predict_image(img, model)}")
+
+plt.show()
+
+"""Identifying where our model performs poorly can help us improve the model, 
+by collecting more data, increasing/decreasing the complexity of the model, and changing the 
+hyperparameters."""
