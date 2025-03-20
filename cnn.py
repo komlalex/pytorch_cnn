@@ -282,4 +282,25 @@ def plot_accuracies(history):
     plt.title("Accuracy vs No. of epochs") 
     plt.show()
 
-plot_accuracies(history)
+#plot_accuracies(history) 
+
+"""Our model reaches an accuracy of around 75%, and by looking at the graph, it seems unlikely
+that the model will achieve an accruacy higher than 80% even after training for a long time. This 
+suggests that we might need to use a more powerful model to capture the relationship 
+between the images and the labels. This can be done by adding more convolutional layers to our model, or increasing the no. of channels in each 
+convolutional layer, or by using regularization techniques.
+
+We can also plot the training and validation losses to study the trend""" 
+def plot_losses(history): 
+    train_losses = [x["train_loss"] for x in history]
+    val_losses = [x["val_loss"] for x in history] 
+    plt.figure()
+    plt.plot(train_losses, "-bx")
+    plt.plot(val_losses, "-rx") 
+    plt.xlabel("epoch")
+    plt.ylabel("loss")
+    plt.legend(["Training", "Validation"]) 
+    plt.title("Loss vs No. of epochs")  
+    plt.show() 
+
+plot_losses(history)
